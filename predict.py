@@ -23,7 +23,7 @@ def predict(data_path):
     # _, X_new, _, _, _, _, _ = preprocess_data(df)
     # predictions = model.predict(X_new)
     # print(predictions)
-    print("Prediction script is a placeholder. You need to train and save a model first.")
+    
 
 
 if __name__ == '__main__':

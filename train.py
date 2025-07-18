@@ -1,38 +1,57 @@
+# Place this file in the 'src/' directory
+
+import os
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, fbeta_score
-from src.model import get_models
+import joblib
+from sklearn.metrics import accuracy_score, f1_score
+from data_loader import load_data
+from preprocessing import preprocess_data
+from model import get_models
 
-def train_and_evaluate(X_train, y_train, X_val, y_val):
+def train_and_save_models():
     """
-    Trains and evaluates multiple classifiers.
+    Main function to run the model training and evaluation pipeline.
+    It saves the trained models to the 'models/' directory.
+    """
+    print("🚀 Starting the training pipeline...")
 
-    Args:
-        X_train (pandas.DataFrame): Training features.
-        y_train (pandas.Series): Training labels.
-        X_val (pandas.DataFrame): Validation features.
-        y_val (pandas.Series): Validation labels.
-    """
+    # Create models directory if it doesn't exist
+    if not os.path.exists('models'):
+        os.makedirs('models')
+
+    # --- 1. Load and Preprocess Data ---
+    print("💾 Loading and preprocessing data...")
+    df = load_data('data/thyroidDF.csv')
+    _, X_train, X_val, _, y_train, y_val, _ = preprocess_data(df)
+    print("✅ Data preprocessing complete.")
+
+    # --- 2. Train, Evaluate, and Save Models ---
     classifiers = get_models()
-    evaluation_metrics = {
-        'Model': [], 'Accuracy': [], 'F1 Score': [], 'Precision': [], 'Recall': [], 'F2 Score': []
-    }
+    evaluation_results = []
 
-    for name, clf in classifiers.items():
-        clf.fit(X_train, y_train)
-        y_pred_val = clf.predict(X_val)
-        accuracy = accuracy_score(y_val, y_pred_val)
-        f1 = f1_score(y_val, y_pred_val, average='weighted')
-        precision = precision_score(y_val, y_pred_val, average='weighted', zero_division=0)
-        recall = recall_score(y_val, y_pred_val, average='weighted')
-        f2 = fbeta_score(y_val, y_pred_val, beta=2, average='weighted')
+    print("\n🏋️ Training and evaluating models...")
+    for name, model in classifiers.items():
+        print(f"--> Training {name}...")
+        model.fit(X_train, y_train)
 
-        evaluation_metrics['Model'].append(name)
-        evaluation_metrics['Accuracy'].append(accuracy)
-        evaluation_metrics['F1 Score'].append(f1)
-        evaluation_metrics['Precision'].append(precision)
-        evaluation_metrics['Recall'].append(recall)
-        evaluation_metrics['F2 Score'].append(f2)
+        # Evaluate on validation set
+        y_pred = model.predict(X_val)
+        accuracy = accuracy_score(y_val, y_pred)
+        f1 = f1_score(y_val, y_pred, average='weighted')
+        evaluation_results.append({'Model': name, 'Accuracy': accuracy, 'F1 Score': f1})
+        print(f"    {name} - Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
-    metrics_df = pd.DataFrame(evaluation_metrics)
-    print("Model Evaluation Metrics:")
-    print(metrics_df)
+        # Save the trained model
+        model_filename = f"models/{name.replace(' ', '_')}.pkl"
+        joblib.dump(model, model_filename)
+        print(f"    ✅ Model saved to {model_filename}")
+
+    # --- 3. Display Results ---
+    metrics_df = pd.DataFrame(evaluation_results)
+    print("\n📊 Model Evaluation Summary:")
+    print(metrics_df.sort_values(by='F1 Score', ascending=False))
+
+    print("\n🎉 Training pipeline finished successfully!")
+
+if __name__ == '__main__':
+    train_and_save_models()
